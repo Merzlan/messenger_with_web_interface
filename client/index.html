@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>Messenger</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* СВЕТЛАЯ ТЕМА: мягкий фон, контрастный текст */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+    background: #f5f7fb;
+    color: #1e293b;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── AUTH (светлая карточка) ───────────────────────── */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #e9f0ff 0%, #ffffff 100%);
+  }
+  .auth-box {
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 40px 36px;
+    width: 400px;
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0,0,0,0.02);
+    backdrop-filter: blur(0px);
+    transition: transform 0.2s;
+  }
+  .auth-box h1 { 
+    text-align: center; font-size: 1.8rem; margin-bottom: 8px; 
+    color: #0f2b3d; letter-spacing: -0.3px;
+    font-weight: 600;
+  }
+  .auth-box .subtitle { text-align: center; font-size: 0.9rem; color: #5b6e8c; margin-bottom: 28px; }
+  .auth-box input {
+    width: 100%; padding: 14px 16px; border-radius: 16px;
+    border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a;
+    font-size: 0.95rem; margin-bottom: 16px; outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.02);
+  }
+  .auth-box input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  .btn-row { display: flex; gap: 12px; margin-top: 6px; }
+  .btn {
+    flex: 1; padding: 12px; border: none; border-radius: 40px;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+  }
+  .btn-primary { background: #3b82f6; color: #fff; box-shadow: 0 2px 6px rgba(59,130,246,0.3); }
+  .btn-primary:hover { background: #2563eb; transform: translateY(-1px); opacity: 1; }
+  .btn-secondary { background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e6edf5; }
+  #auth-error {
+    margin-top: 16px; padding: 10px 14px; border-radius: 20px;
+    background: #fee2e2; color: #b91c1c; font-size: 0.85rem; display: none;
+  }
+
+  /* ── MAIN LAYOUT (светлая панель) ─────────────────── */
+  #chat-screen { display: none; flex: 1; flex-direction: row; height: 100vh; overflow: hidden; background: #f8fafc; }
+
+  /* ── SIDEBAR (светлый/чистый) ───────────────────── */
+  #sidebar {
+    width: 280px; background: #ffffff; display: flex; flex-direction: column;
+    border-right: 1px solid #eef2f6; flex-shrink: 0;
+    box-shadow: 1px 0 0 rgba(0,0,0,0.02);
+  }
+  #sidebar-header {
+    padding: 20px 20px; border-bottom: 1px solid #eef2f8;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #my-name { font-weight: 700; font-size: 1rem; color: #0f2b3d; background: #eef3ff; padding: 6px 12px; border-radius: 40px; }
+  #logout-btn {
+    background: transparent; border: none; color: #5b6e8c; cursor: pointer;
+    font-size: 0.85rem; padding: 6px 12px; border-radius: 30px; transition: 0.2s;
+  }
+  #logout-btn:hover { background: #f1f5f9; color: #1e293b; }
+
+  .sidebar-section-header {
+    padding: 16px 20px 6px 20px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #7e8b9e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sidebar-section-header button {
+    background: #ffffff; border: 1px solid #e2e8f0; color: #3b82f6; cursor: pointer;
+    font-size: 1.2rem; line-height: 1; width: 28px; height: 28px; border-radius: 20px;
+    transition: 0.15s; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .sidebar-section-header button:hover { background: #eff6ff; border-color: #b9d0f8; }
+
+  #sidebar-scroll { flex: 1; overflow-y: auto; padding: 4px 8px 16px 8px; }
+
+  .list-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 14px; cursor: pointer; transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .list-item:hover  { background: #f1f5f9; }
+  .list-item.active { background: #eef3ff; box-shadow: inset 0 0 0 1px #d9e6ff; }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; background: #e2eafc;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 1rem; color: #1e40af; flex-shrink: 0; position: relative;
+  }
+  .avatar.group-avatar { background: #e9e4ff; color: #5b3cc4; border-radius: 16px; }
+  .online-dot {
+    position: absolute; bottom: 2px; right: 2px;
+    width: 12px; height: 12px; background: #22c55e;
+    border-radius: 50%; border: 2px solid #ffffff;
+  }
+  .offline-dot {
+    position: absolute; bottom: 2px; right: 2px;
+    width: 12px; height: 12px; background: #cbd5e1;
+    border-radius: 50%; border: 2px solid #ffffff;
+  }
+  .item-name { font-size: 0.95rem; font-weight: 500; color: #0f172a; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .unread-badge {
+    margin-left: auto; background: #3b82f6; color: white;
+    font-size: 0.7rem; font-weight: 600; min-width: 20px; height: 20px;
+    border-radius: 30px; display: flex; align-items: center; justify-content: center;
+    padding: 0 6px; flex-shrink: 0;
+  }
+
+  #status-bar { 
+    padding: 12px 20px; font-size: 0.75rem; color: #6c7a91; 
+    border-top: 1px solid #eef2f8; background: #ffffff; 
+  }
+  .status-online { color: #16a34a; font-weight: 500; }
+
+  /* ── CHAT AREA (светлая, воздушная) ─────────────── */
+  #chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #ffffff; }
+  #chat-header {
+    padding: 18px 24px; background: #ffffff; border-bottom: 1px solid #eef2f8;
+    font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 12px;
+  }
+  #chat-with-name { font-size: 1.1rem; font-weight: 600; color: #0f172a; }
+  .header-sub { font-weight: 400; color: #5f6f8a; font-size: 0.75rem; margin-top: 4px; }
+
+  #messages {
+    flex: 1; overflow-y: auto; padding: 24px 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: #fefefe;
+  }
+
+  .msg { display: flex; flex-direction: column; max-width: 70%; }
+  .msg.mine   { align-self: flex-end; align-items: flex-end; }
+  .msg.theirs { align-self: flex-start; }
+  
+  .msg-bubble {
+    padding: 10px 16px; border-radius: 22px; font-size: 0.9rem;
+    line-height: 1.45; word-break: break-word;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.03);
+  }
+  .msg.mine   .msg-bubble { background: #3b82f6; color: #ffffff; border-bottom-right-radius: 6px; }
+  .msg.theirs .msg-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 6px; border: 1px solid #e9edf2; }
+  .msg-meta { font-size: 0.7rem; color: #7c8aa3; margin-top: 5px; padding: 0 6px; }
+  .msg-sender { font-size: 0.75rem; font-weight: 600; color: #3b82f6; margin-bottom: 4px; padding: 0 6px; }
+
+  .notice {
+    align-self: center; font-size: 0.75rem; color: #5d6e8f;
+    background: #f1f5f9; padding: 6px 14px; border-radius: 40px; 
+    border: 1px solid #e2e8f0;
+  }
+
+  #input-area {
+    padding: 16px 20px; background: #ffffff; border-top: 1px solid #eef2f8;
+    display: flex; gap: 12px; align-items: flex-end;
+  }
+  #input-area textarea {
+    flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 28px;
+    color: #0f172a; font-size: 0.9rem; padding: 12px 18px; outline: none;
+    resize: none; max-height: 120px; font-family: inherit; transition: 0.2s;
+  }
+  #input-area textarea:focus  { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1);}
+  #input-area textarea:disabled { background: #f9f9fc; opacity: 0.7; }
+  #send-btn {
+    background: #3b82f6; border: none; border-radius: 40px; color: white;
+    width: 46px; height: 46px; cursor: pointer; font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: 0.2s; box-shadow: 0 2px 6px rgba(59,130,246,0.2);
+  }
+  #send-btn:hover { background: #2563eb; transform: scale(1.02);}
+  #send-btn:disabled { opacity: 0.5; transform: none; }
+
+  /* ── МОДАЛКА (светлая) ───────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #ffffff; border-radius: 28px; padding: 28px;
+    width: 380px; box-shadow: 0 25px 35px -12px rgba(0,0,0,0.2);
+  }
+  .modal h2 { font-size: 1.2rem; margin-bottom: 20px; color: #0f172a; }
+  .modal input {
+    width: 100%; padding: 12px 14px; border-radius: 18px;
+    border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a;
+    font-size: 0.9rem; margin-bottom: 16px; outline: none;
+  }
+  .modal input:focus { border-color: #3b82f6; }
+  .modal label { font-size: 0.8rem; color: #475569; display: block; margin-bottom: 8px; font-weight: 500; }
+  .members-list {
+    max-height: 200px; overflow-y: auto; margin-bottom: 18px;
+    border: 1px solid #eef2f8; border-radius: 20px; padding: 6px;
+    background: #fefefe;
+  }
+  .member-check {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px; border-radius: 40px; cursor: pointer; transition: background 0.1s;
+  }
+  .member-check:hover { background: #f1f5f9; }
+  .member-check input[type=checkbox] { accent-color: #3b82f6; width: 18px; height: 18px; }
+  .modal-btns { display: flex; gap: 12px; margin-top: 8px; }
+  #modal-error { color: #dc2626; font-size: 0.8rem; min-height: 24px; }
+
+  /* ── КНОПКА НАЗАД ───────────────────────────── */
+  #back-btn {
+    display: none;
+    background: #f1f5f9; border: none; color: #3b82f6;
+    font-size: 1.5rem; cursor: pointer; width: 36px; height: 36px;
+    border-radius: 50%; line-height: 1; transition: 0.2s;
+  }
+  #back-btn:hover { background: #e6edf5; }
+
+  /* ── МОБИЛЬНАЯ АДАПТАЦИЯ (светлая тема) ───────── */
+  @media (max-width: 600px) {
+    .auth-box {
+      width: 100%; border-radius: 28px;
+      margin: 20px; padding: 32px 24px;
+      box-shadow: 0 20px 30px -10px rgba(0,0,0,0.1);
+    }
+    #auth-screen { align-items: center; padding: 0; background: #edf2f7; }
+
+    #chat-screen { position: fixed; inset: 0; overflow: hidden; }
+    #sidebar {
+      position: absolute; inset: 0;
+      width: 100%; z-index: 12;
+      transform: translateX(0);
+      transition: transform 0.25s cubic-bezier(0.2,0.9,0.4,1.1);
+    }
+    #sidebar.hidden-mobile { transform: translateX(-100%); }
+    #chat-area {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      height: 100%;
+      background: #ffffff;
+    }
+    #chat-area.visible-mobile { transform: translateX(0); }
+    #back-btn { display: flex; align-items: center; justify-content: center; }
+    .msg { max-width: 85%; }
+    .modal { width: calc(100% - 32px); margin: 0 16px; border-radius: 28px; }
+    #input-area textarea { font-size: 1rem; }
+    .list-item { padding: 12px 12px; }
+    #send-btn { width: 48px; height: 48px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-box">
+    <h1>✨ Free Chat</h1>
+    <p class="subtitle">Войдите или создайте аккаунт</p>
+    <input id="username" type="text" placeholder="Имя пользователя" autocomplete="off">
+    <input id="password" type="password" placeholder="Пароль">
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="doLogin()">Войти</button>
+      <button class="btn btn-secondary" onclick="doRegister()">Регистрация</button>
+    </div>
+    <div id="auth-error"></div>
+  </div>
+</div>
+
+<div id="chat-screen">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span id="my-name"></span>
+      <button id="logout-btn" onclick="doLogout()">Выйти</button>
+    </div>
+    <div id="sidebar-scroll">
+      <div class="sidebar-section-header"><span>Пользователи</span></div>
+      <div id="users-list"></div>
+      <div class="sidebar-section-header" style="margin-top:12px">
+        <span>Группы</span>
+        <button onclick="openCreateGroup()" title="Создать группу">＋</button>
+      </div>
+      <div id="groups-list"></div>
+    </div>
+    <div id="status-bar">Подключение…</div>
+  </div>
+
+  <div id="chat-area">
+    <div id="chat-header">
+      <button id="back-btn" onclick="goBackToSidebar()" title="Назад">‹</button>
+      <div>
+        <div id="chat-with-name">Выберите собеседника</div>
+        <div id="group-members-hint" class="header-sub"></div>
+      </div>
+    </div>
+    <div id="messages">
+      <div id="empty-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.9rem;gap:12px">
+        <div style="font-size:3rem">💬</div>
+        <div>Выберите пользователя или группу слева</div>
+      </div>
+    </div>
+    <div id="input-area">
+      <textarea id="msg-input" placeholder="Введите сообщение…" rows="1"
+        disabled onkeydown="onInputKey(event)"></textarea>
+      <button id="send-btn" onclick="sendMessage()" disabled>➤</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-create-group" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Создать новую группу</h2>
+    <input id="group-name-input" type="text" placeholder="Название группы" maxlength="64">
+    <label>Участники (выберите хотя бы одного):</label>
+    <div class="members-list" id="members-checkboxes"></div>
+    <div id="modal-error"></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="submitCreateGroup()">Создать</button>
+      <button class="btn btn-secondary" onclick="closeCreateGroup()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Глобальное состояние ──────────────────────────────
+let ws            = null;       // текущий объект WebSocket
+let wsConnected   = false;      // флаг активного соединения
+let myName        = '';         // имя залогиненного пользователя
+let chatWith      = null;       // username открытого личного чата (null если групповой)
+let chatGroupId   = null;       // id открытой группы (null если личный чат)
+let historyLoaded = false;      // загружена ли история текущего чата
+
+let messages      = {};         // messages[username] = [{from, text, ts}, ...]
+let pendingMessages = {};       // сообщения, пришедшие до загрузки истории
+let groupMessages  = {};        // groupMessages[group_id] = [{from, text, ts}, ...]
+let pendingGroupMessages = {};  // групповые сообщения до загрузки истории
+
+let unread        = {};         // unread[username] = число непрочитанных
+let groupUnread   = {};         // groupUnread[group_id] = число непрочитанных
+
+let groups        = {};         // groups[id] = {id, name, created_by, members}
+let onlineUsers   = [];         // имена пользователей онлайн прямо сейчас
+let allUsers      = [];         // все зарегистрированные пользователи
+
+// ── WebSocket: подключение и переподключение ──────────
+function connect() {
+  // Выбираем протокол в зависимости от того, открыт ли сайт по HTTPS
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const sock = new WebSocket(`${proto}://${location.host}`);
+  ws = sock;
+
+  sock.onopen = () => {
+    if (ws !== sock) return; // игнорируем старые сокеты при быстром переподключении
+    wsConnected = true;
+    setStatus('Соединено', true);
+  };
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    wsConnected = false;
+    setStatus('Отключено. Переподключение…', false);
+    setTimeout(connect, 3000); // автоматическое переподключение через 3 секунды
+  };
+  sock.onerror = () => {};
+  sock.onmessage = (e) => {
+    if (ws !== sock) return;
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; } // игнорируем невалидный JSON
+    handleMessage(msg);
+  };
+}
+
+// Отправить JSON-объект на сервер
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify(obj));
+}
+
+// ── Диспетчер входящих сообщений ─────────────────────
+// Разбирает поле cmd и направляет обработку в нужную ветку
+function handleMessage(msg) {
+  switch (msg.cmd) {
+
+    // Авторизация прошла успешно
+    case 'auth_ok':
+      myName = msg.username;
+      document.getElementById('my-name').textContent = myName;
+      showScreen('chat');           // переключаемся на экран чата
+      send({ cmd: 'list_users' }); // запрашиваем список пользователей
+      break;
+
+    // Сервер отклонил логин/регистрацию
+    case 'auth_fail':
+      showAuthError(msg.reason || 'Ошибка авторизации');
+      break;
+
+    // Счётчики непрочитанных личных сообщений при входе
+    case 'unread_counts':
+      if (!myName) break;
+      Object.entries(msg.counts || {}).forEach(([sender, count]) => {
+        if (count > 0) { unread[sender] = count; updateUnreadBadge(sender); }
+      });
+      break;
+
+    // Счётчики непрочитанных групповых сообщений при входе
+    case 'group_unread_counts':
+      if (!myName) break;
+      Object.entries(msg.counts || {}).forEach(([gid, count]) => {
+        if (count > 0) { groupUnread[gid] = count; updateGroupUnreadBadge(Number(gid)); }
+      });
+      break;
+
+    // Входящее личное сообщение
+    case 'recv_msg': {
+      if (!myName) break;
+      const peer = (msg.from === myName) ? msg.to : msg.from;
+      if (!peer) break;
+
+      if (peer === chatWith && !chatGroupId && historyLoaded) {
+        // Чат с этим пользователем открыт — отрисовываем сразу
+        appendMessage(msg.from, msg.text, msg.ts);
+        if (msg.from !== myName) send({ cmd: 'mark_read', peer: msg.from });
+      } else {
+        // Чат не открыт — кладём в pending и увеличиваем счётчик
+        if (!pendingMessages[peer]) pendingMessages[peer] = [];
+        pendingMessages[peer].push({ from: msg.from, text: msg.text, ts: msg.ts });
+        if (msg.from !== myName) {
+          unread[peer] = (unread[peer] || 0) + 1;
+          updateUnreadBadge(peer);
+        }
+      }
+      break;
+    }
+
+    // Входящее групповое сообщение
+    case 'recv_group_msg': {
+      if (!myName) break;
+      const gid = msg.group_id;
+      if (chatGroupId === gid && historyLoaded) {
+        // Нужная группа открыта — отрисовываем сразу
+        appendMessage(msg.from, msg.text, msg.ts, true, true);
+        if (msg.from !== myName) send({ cmd: 'mark_group_read', group_id: gid });
+      } else {
+        // Группа не открыта — pending + бейдж
+        if (!pendingGroupMessages[gid]) pendingGroupMessages[gid] = [];
+        pendingGroupMessages[gid].push({ from: msg.from, text: msg.text, ts: msg.ts });
+        if (msg.from !== myName) {
+          groupUnread[gid] = (groupUnread[gid] || 0) + 1;
+          updateGroupUnreadBadge(gid);
+        }
+      }
+      break;
+    }
+
+    // Полный список всех зарегистрированных пользователей с онлайн-статусами
+    case 'all_users_list':
+      if (!myName) break;
+      onlineUsers = (msg.users || []).filter(u => u.online).map(u => u.name);
+      allUsers = msg.users || [];
+      renderUserList(allUsers);
+      // Восстанавливаем бейджи после перерисовки списка
+      Object.entries(unread).forEach(([sender, count]) => {
+        if (count > 0) updateUnreadBadge(sender);
+      });
+      break;
+
+    // Устаревший формат — только онлайн-пользователи (на случай старого сервера)
+    case 'user_list':
+      if (!myName) break;
+      onlineUsers = msg.users || [];
+      renderUserList(onlineUsers.map(u => ({ name: u, online: true })));
+      Object.entries(unread).forEach(([sender, count]) => {
+        if (count > 0) updateUnreadBadge(sender);
+      });
+      break;
+
+    // Список групп пользователя (приходит сразу после авторизации)
+    case 'group_list':
+      if (!myName) break;
+      (msg.groups || []).forEach(g => { groups[g.id] = g; });
+      renderGroupList();
+      break;
+
+    // Уведомление о создании новой группы (рассылается всем участникам)
+    case 'group_created': {
+      if (!myName) break;
+      groups[msg.id] = { id: msg.id, name: msg.name, created_by: msg.created_by, members: msg.members };
+      renderGroupList();
+      appendNotice(`Группа "${msg.name}" создана`);
+      break;
+    }
+
+    // История личной переписки: объединяем с pending-сообщениями
+    case 'history': {
+      if (!myName) break;
+      const dbMsgs = msg.messages || [];
+      const pending = pendingMessages[msg.with] || [];
+      const dbLastTs = dbMsgs.length ? dbMsgs[dbMsgs.length - 1].ts : 0;
+      // Оставляем только те pending, что новее последнего сообщения из БД
+      const fresh = pending.filter(m => m.ts > dbLastTs);
+      messages[msg.with] = [...dbMsgs, ...fresh];
+      pendingMessages[msg.with] = [];
+      if (msg.with === chatWith && !chatGroupId) {
+        historyLoaded = true;
+        renderHistory();
+      }
+      break;
+    }
+
+    // История группового чата: аналогично личному
+    case 'group_history': {
+      if (!myName) break;
+      const gid = msg.group_id;
+      const dbMsgs = msg.messages || [];
+      const pending = pendingGroupMessages[gid] || [];
+      const dbLastTs = dbMsgs.length ? dbMsgs[dbMsgs.length - 1].ts : 0;
+      const fresh = pending.filter(m => m.ts > dbLastTs);
+      groupMessages[gid] = [...dbMsgs, ...fresh];
+      pendingGroupMessages[gid] = [];
+      if (chatGroupId === gid) {
+        historyLoaded = true;
+        renderHistory();
+      }
+      break;
+    }
+
+    // Системное уведомление (вход/выход пользователя)
+    case 'notice':
+      if (myName) {
+        appendNotice(msg.text);
+        send({ cmd: 'list_users' }); // обновляем список (мог измениться онлайн-статус)
+      }
+      break;
+
+    // Ошибка от сервера (например, «Вы не в этой группе»)
+    case 'error':
+      if (myName) appendNotice('⚠ ' + msg.text);
+      break;
+  }
+}
+
+// ── Авторизация ───────────────────────────────────────
+function doLogin()    { auth('login'); }
+function doRegister() { auth('register'); }
+
+function auth(cmd) {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) { showAuthError('Введите имя и пароль'); return; }
+  hideAuthError();
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    send({ cmd, username, password });
+  } else {
+    // Соединение ещё не установлено — ждём события open и отправляем тогда
+    setStatus('Подключение…', false);
+    const onOpen = () => { ws.removeEventListener('open', onOpen); send({ cmd, username, password }); };
+    ws.addEventListener('open', onOpen);
+  }
+}
+
+// Выход: очищаем всё состояние и возвращаемся на экран авторизации
+function doLogout() {
+  myName = ''; chatWith = null; chatGroupId = null; historyLoaded = false;
+  messages = {}; pendingMessages = {};
+  groupMessages = {}; pendingGroupMessages = {};
+  unread = {}; groupUnread = {};
+  groups = {}; onlineUsers = []; allUsers = [];
+
+  // Сбрасываем DOM до начального состояния
+  document.getElementById('users-list').innerHTML  = '';
+  document.getElementById('groups-list').innerHTML = '';
+  document.getElementById('messages').innerHTML    =
+    '<div id="empty-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#444;font-size:0.9rem;gap:10px"><div style="font-size:3rem">💬</div><div>Выберите пользователя или группу слева</div></div>';
+  document.getElementById('chat-with-name').textContent = 'Выберите собеседника';
+  document.getElementById('group-members-hint').textContent = '';
+  document.getElementById('msg-input').disabled = true;
+  document.getElementById('send-btn').disabled  = true;
+  showScreen('auth');
+
+  // Закрываем старый сокет и открываем новый
+  const oldSock = ws;
+  ws = null; wsConnected = false;
+  if (oldSock) oldSock.close();
+  connect();
+}
+
+// ── Управление экранами ───────────────────────────────
+// Переключает видимость auth-screen / chat-screen
+function showScreen(name) {
+  document.getElementById('auth-screen').style.display = name === 'auth' ? 'flex' : 'none';
+  document.getElementById('chat-screen').style.display = name === 'chat' ? 'flex' : 'none';
+}
+// Показать ошибку под формой авторизации
+function showAuthError(text) {
+  const el = document.getElementById('auth-error');
+  el.textContent = text; el.style.display = 'block';
+}
+function hideAuthError() { document.getElementById('auth-error').style.display = 'none'; }
+// Обновить строку статуса соединения в нижней части сайдбара
+function setStatus(text, online) {
+  const el = document.getElementById('status-bar');
+  el.textContent = text; el.className = online ? 'status-online' : '';
+}
+
+// ── Список пользователей ──────────────────────────────
+// Перерисовывает весь список (вызывается при получении all_users_list)
+function renderUserList(users) {
+  const list = document.getElementById('users-list');
+  list.innerHTML = '';
+  users.filter(u => u.name !== myName).forEach(u => { // себя не показываем
+    const div = document.createElement('div');
+    div.className = 'list-item' + (u.name === chatWith && !chatGroupId ? ' active' : '');
+    div.dataset.user = u.name; // data-атрибут для updateUnreadBadge
+    const count = unread[u.name] || 0;
+    const dot = u.online
+      ? '<div class="online-dot"></div>'
+      : '<div class="offline-dot"></div>';
+    div.innerHTML = `
+      <div class="avatar">${u.name[0].toUpperCase()}${dot}</div>
+      <span class="item-name">${escHtml(u.name)}</span>
+      ${count > 0 ? `<span class="unread-badge">${count > 99 ? '99+' : count}</span>` : ''}`;
+    div.onclick = () => openChat(u.name);
+    list.appendChild(div);
+  });
+}
+
+// Обновляет бейдж непрочитанных у конкретного пользователя без перерисовки списка
+function updateUnreadBadge(username) {
+  const div = document.querySelector(`[data-user="${CSS.escape(username)}"]`);
+  if (!div) return;
+  const old = div.querySelector('.unread-badge');
+  if (old) old.remove();
+  const count = unread[username] || 0;
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'unread-badge';
+    badge.textContent = count > 99 ? '99+' : count;
+    div.appendChild(badge);
+  }
+}
+
+// ── Список групп ──────────────────────────────────────
+function renderGroupList() {
+  const list = document.getElementById('groups-list');
+  list.innerHTML = '';
+  Object.values(groups).forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'list-item' + (chatGroupId === g.id ? ' active' : '');
+    div.dataset.group = g.id;
+    const count = groupUnread[g.id] || 0;
+    div.innerHTML = `
+      <div class="avatar group-avatar">#</div>
+      <span class="item-name">${escHtml(g.name)}</span>
+      ${count > 0 ? `<span class="unread-badge">${count > 99 ? '99+' : count}</span>` : ''}`;
+    div.onclick = () => openGroupChat(g.id);
+    list.appendChild(div);
+  });
+}
+
+// Обновляет бейдж непрочитанных у конкретной группы
+function updateGroupUnreadBadge(group_id) {
+  const div = document.querySelector(`[data-group="${group_id}"]`);
+  if (!div) return;
+  const old = div.querySelector('.unread-badge');
+  if (old) old.remove();
+  const count = groupUnread[group_id] || 0;
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'unread-badge';
+    badge.textContent = count > 99 ? '99+' : count;
+    div.appendChild(badge);
+  }
+}
+
+// ── Мобильная навигация ───────────────────────────────
+function isMobile() { return window.innerWidth <= 600; }
+
+// При открытии чата на мобильном — прячем сайдбар, показываем чат
+function showChatMobile() {
+  if (!isMobile()) return;
+  document.getElementById('sidebar').classList.add('hidden-mobile');
+  document.getElementById('chat-area').classList.add('visible-mobile');
+}
+
+// Кнопка «Назад» — возвращаемся к списку контактов
+function goBackToSidebar() {
+  document.getElementById('sidebar').classList.remove('hidden-mobile');
+  document.getElementById('chat-area').classList.remove('visible-mobile');
+}
+
+// ── Открыть личный чат ────────────────────────────────
+function openChat(username) {
+  chatWith = username; chatGroupId = null; historyLoaded = false;
+
+  // Сбрасываем счётчик непрочитанных и уведомляем сервер
+  unread[username] = 0;
+  updateUnreadBadge(username);
+  send({ cmd: 'mark_read', peer: username });
+
+  // Снимаем active со всех элементов, ставим на нужный
+  document.querySelectorAll('.list-item').forEach(el => {
+    el.classList.toggle('active',
+      el.dataset.user === username && !el.dataset.group);
+  });
+
+  document.getElementById('chat-with-name').textContent = username;
+  document.getElementById('group-members-hint').textContent = '';
+  document.getElementById('msg-input').disabled = false;
+  document.getElementById('send-btn').disabled  = false;
+  if (!isMobile()) document.getElementById('msg-input').focus();
+  document.getElementById('messages').innerHTML = '';
+
+  send({ cmd: 'history', with: username }); // запросить историю с сервера
+  showChatMobile();
+}
+
+// ── Открыть групповой чат ─────────────────────────────
+function openGroupChat(group_id) {
+  chatWith = null; chatGroupId = group_id; historyLoaded = false;
+
+  groupUnread[group_id] = 0;
+  updateGroupUnreadBadge(group_id);
+  send({ cmd: 'mark_group_read', group_id });
+
+  document.querySelectorAll('.list-item').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.group) === group_id);
+  });
+
+  const g = groups[group_id];
+  document.getElementById('chat-with-name').textContent = g ? g.name : 'Группа';
+  // Показываем количество участников и их имена в подзаголовке
+  document.getElementById('group-members-hint').textContent =
+    g ? `${g.members.length} участн. · ${g.members.join(', ')}` : '';
+
+  document.getElementById('msg-input').disabled = false;
+  document.getElementById('send-btn').disabled  = false;
+  if (!isMobile()) document.getElementById('msg-input').focus();
+  document.getElementById('messages').innerHTML = '';
+
+  send({ cmd: 'group_history', group_id }); // запросить историю группы
+  showChatMobile();
+}
+
+// ── Отрисовка истории ─────────────────────────────────
+// Полностью перерисовывает ленту сообщений из локального кэша
+function renderHistory() {
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+
+  const isGroup = chatGroupId !== null;
+  const hist = isGroup ? (groupMessages[chatGroupId] || []) : (messages[chatWith] || []);
+
+  if (hist.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;color:#444;margin-top:40px;font-size:0.85rem';
+    empty.textContent = 'Нет сообщений. Напишите первым!';
+    msgs.appendChild(empty);
+    return;
+  }
+  hist.forEach(m => appendMessage(m.from, m.text, m.ts, false, isGroup));
+  scrollBottom();
+}
+
+// Добавляет одно сообщение в конец ленты
+function appendMessage(from, text, ts, doScroll = true, isGroup = false) {
+  const msgs = document.getElementById('messages');
+  const isMine = from === myName;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (isMine ? 'mine' : 'theirs');
+
+  // В групповых чатах показываем имя отправителя над чужими сообщениями
+  if (isGroup && !isMine) {
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.textContent = from;
+    wrap.appendChild(sender);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text; // textContent защищает от XSS
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = (isMine ? 'Вы' : from) + ' · ' + formatTime(ts);
+
+  wrap.appendChild(bubble);
+  wrap.appendChild(meta);
+  msgs.appendChild(wrap);
+
+  if (doScroll) scrollBottom();
+}
+
+// Добавляет системное уведомление в ленту (вход/выход пользователя, создание группы)
+function appendNotice(text) {
+  if (document.getElementById('chat-screen').style.display === 'none') return;
+  const msgs = document.getElementById('messages');
+  const el = document.createElement('div');
+  el.className = 'notice';
+  el.textContent = text;
+  msgs.appendChild(el);
+  scrollBottom();
+}
+
+// Прокрутить ленту сообщений вниз
+function scrollBottom() {
+  const msgs = document.getElementById('messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Отправка сообщения ────────────────────────────────
+function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  // Выбираем команду в зависимости от типа открытого чата
+  if (chatGroupId !== null) {
+    send({ cmd: 'send_group_msg', group_id: chatGroupId, text });
+  } else if (chatWith) {
+    send({ cmd: 'send_msg', to: chatWith, text });
+  } else {
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto'; // сбрасываем высоту textarea
+}
+
+// Обработка нажатий в поле ввода:
+// Enter без Shift — отправить; автоматически растягивает textarea по контенту
+function onInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const ta = document.getElementById('msg-input');
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+}
+
+// ── Создание группы (модальное окно) ─────────────────
+function openCreateGroup() {
+  // Динамически заполняем список чекбоксами из allUsers (кроме себя)
+  const container = document.getElementById('members-checkboxes');
+  container.innerHTML = '';
+  const others = allUsers.filter(u => u.name !== myName);
+  if (others.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:#555;font-size:0.85rem">Нет других пользователей</div>';
+  } else {
+    others.forEach(u => {
+      const label = document.createElement('label');
+      label.className = 'member-check';
+      const onlineHint = u.online ? ' 🟢' : '';
+      label.innerHTML = `<input type="checkbox" value="${escHtml(u.name)}"> ${escHtml(u.name)}${onlineHint}`;
+      container.appendChild(label);
+    });
+  }
+  document.getElementById('group-name-input').value = '';
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('modal-create-group').classList.remove('hidden');
+  document.getElementById('group-name-input').focus();
+}
+
+function closeCreateGroup() {
+  document.getElementById('modal-create-group').classList.add('hidden');
+}
+
+function submitCreateGroup() {
+  const name = document.getElementById('group-name-input').value.trim();
+  // Собираем имена отмеченных участников
+  const checked = [...document.querySelectorAll('#members-checkboxes input[type=checkbox]:checked')]
+    .map(el => el.value);
+
+  const errEl = document.getElementById('modal-error');
+  if (!name) { errEl.textContent = 'Введите название группы'; return; }
+  if (checked.length === 0) { errEl.textContent = 'Выберите хотя бы одного участника'; return; }
+
+  send({ cmd: 'create_group', name, members: checked });
+  closeCreateGroup();
+}
+
+// Закрыть модалку при клике на затемнённый оверлей (вне карточки)
+document.getElementById('modal-create-group').addEventListener('click', function(e) {
+  if (e.target === this) closeCreateGroup();
+});
+
+// ── Утилиты ───────────────────────────────────────────
+// Экранирование HTML-спецсимволов для безопасной вставки в innerHTML
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+// Форматирование Unix-timestamp в строку «ЧЧ:ММ»
+function formatTime(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Enter в поле пароля — сразу войти; Tab из логина — перейти к паролю
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('password').focus();
+});
+
+// ── Запуск ────────────────────────────────────────────
+connect(); // устанавливаем WebSocket-соединение при загрузке страницы
+</script>
+</body>
+</html>
